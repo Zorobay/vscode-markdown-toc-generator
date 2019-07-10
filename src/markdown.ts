@@ -1,6 +1,4 @@
 import { window, Position, TextDocument, TextEditorEdit, Range, TextLine, InputBoxOptions, TextEditor, DocumentHighlight, TextEdit } from "vscode";
-import { range, some } from 'lodash';
-import { build } from "xregexp";
 
 // Define constants to mark start and end of markdown TOC
 const TOC_START_COMMENT = "[comment]: # (---START_OF_TOC---)";
@@ -10,16 +8,11 @@ const TOC_END_COMMENT = "\n[comment]: # (---END_OF_TOC---)\n";
 const TAB = "   ";
 
 // Define regexps
-const REG_HEADING = new RegExp(String.raw`\s{0,3}#{2,5}\s*[\.\w]+`, 'i');
-//const REG_HASH = new RegExp(String.raw`#{1,5}`, 'i');
-//const REG_TITLE = new RegExp(String.raw`^#{1}\s*[a-zA-Z]+`, 'i');
-const REG_HEADING_PARTS = new RegExp(String.raw`(\s*#*)\s([0-9.]*)\s*(.*)`, 'i');
-//const REG_TOC = new RegExp(String.raw`^\s*[\*-]\s*[0-9.]*\s*\[[\w\s\-\(\)\/,]+\]\(#`, 'i');
-//const REG_TOC_TITLE = new RegExp(String.raw`#\s+`, 'i');
+const REG_HEADING = new RegExp(String.raw`\s{0,3}#{2,6}\s*.+`, 'i');
+const REG_HEADING_PARTS = new RegExp(String.raw`(\s*#*)\s([0-9.]*)\s*(.+)`, 'i');
 const REG_SPACES = new RegExp(String.raw`\s+`, 'ig');
 const REG_DOTS = new RegExp(String.raw`\.`, 'g');
-//const REG_DATE_OF_TITLE = new RegExp(String.raw`\([0-9\-]+\)`, 'i');
-
+const REG_CHAPTER = /(\s*#{1,6})([0-9.\s]+)(.*)/;
 
 export class Markdown {
 
@@ -29,6 +22,48 @@ export class Markdown {
     constructor(editor: TextEditor, document: TextDocument) {
         this.editor = editor;
         this.document = document;
+    }
+
+    async generateHeadingNumbering() {
+        let chapters = [0, 0, 0, 0, 0];
+        let prevLevel = 0;
+
+        let chaptersToString = (chapter: number[]) => {
+            return chapter.filter(Boolean).join(".");
+        };
+
+        await this.editor.edit((editBuilder: TextEditorEdit) => {
+            for (let lineIndex: number = 0; lineIndex < this.document.lineCount; lineIndex++) {
+                let line = this.document.lineAt(lineIndex);
+                if (!line.isEmptyOrWhitespace && this.document.lineAt(lineIndex).text.match(REG_HEADING)) {
+                    let heading = new Heading(line.text);
+                    let level = heading.getLevel();
+
+                    if (prevLevel > level) {
+                        for (let j = level - 1; j < chapters.length; j++) {
+                            chapters[j] = 0;
+                        }
+                    }
+                    chapters[level - 2]++;
+
+                    let targetChapter = chaptersToString(chapters);
+
+                    console.log(`Heading: ${heading.heading}, Should be: ${targetChapter}`);
+                    if (!heading.getChapter() || heading.getChapter() !== targetChapter) {  // Heading is missing numbering or is wrong
+                        let match = REG_CHAPTER.exec(line.text);
+                        if (match && match.length === 4) {
+                            match[2] = ` ${targetChapter} `;
+                            let newHeading = match.slice(1, 4).join("");
+
+                            editBuilder.replace(line.range, newHeading);
+                        }
+
+                    }
+                    prevLevel = level;
+                }
+            }
+        });
+        window.showInformationMessage("Generated/Updated heading numbering!");
     }
 
     createOrUpdateTOC() {
@@ -85,24 +120,33 @@ export class Markdown {
     }
 
     async updateTOC(locs: { toc_start: number, toc_end: number, context: number }) {
-        // Remove old TOC
-
         if (locs.toc_start > 0 && locs.toc_end > 0 && locs.toc_start < locs.toc_end) {
             await this.replaceTOC(locs.toc_start, locs.toc_end);
         }
     }
 
-    async removeTOC(begin: number, end: number) {
+    async removeTOC(begin: number=-1, end: number=-1) {
+        if (begin < 0) {
+            let positions = this.tocPresent();
+            if (positions.toc_start > 0) {
+                begin = positions.toc_start;
+                end = positions.toc_end;
+            } else {
+                window.showWarningMessage("No Table of Contents found near cursor!");
+                return;
+            }
+        }
         if (this.document.lineAt(begin).text.includes(TOC_START_COMMENT)) {
             await this.editor.edit((editBuilder: TextEditorEdit) => {
                 editBuilder.delete(new Range(new Position(begin, 0), new Position(end + 1, 0)));
             });
+            window.showInformationMessage("Removed Table of Contents!");
         }
     }
 
     async replaceTOC(toc_start: number, toc_end: number) {
         let toc = new TableOfContents(this.document);
-        let range: Range = new Range(new Position(toc_start, 0), new Position(toc_start + toc.getNumberOfLines()-1, 0));
+        let range: Range = new Range(new Position(toc_start, 0), new Position(toc_start + toc.getNumberOfLines() - 1, 0));
 
         await this.editor.edit((editBuilder: TextEditorEdit) => {
             editBuilder.replace(range, toc.toString());
@@ -139,7 +183,7 @@ class TableOfContents {
 
         for (let line of allLines) {
             if (line.match(REG_HEADING)) {
-                let header = new Header(line);
+                let header = new Heading(line);
                 let level = header.getLevel();
                 let chapter = header.getChapter();
                 let text = header.getText();
@@ -158,8 +202,8 @@ class TableOfContents {
     }
 
     getNumberOfLines() {
-        let lines:number = 0;
-        for(let line of this.tocLines) {
+        let lines: number = 0;
+        for (let line of this.tocLines) {
             lines++;
             let newlines = line.match(/\n/g);
             if (newlines) {
@@ -171,16 +215,16 @@ class TableOfContents {
 
 }
 
-class Header {
+class Heading {
 
-    header: string;
+    heading: string;
     level: number = -1;
     chapter: string = '?';
     text: string = '?';
 
-    constructor(header: string) {
-        this.header = header;
-        let parts = REG_HEADING_PARTS.exec(this.header);
+    constructor(heading: string) {
+        this.heading = heading;
+        let parts = REG_HEADING_PARTS.exec(this.heading);
         if (parts) {
             this.level = parts[1].length;
             this.chapter = parts[2];

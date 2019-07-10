@@ -9,13 +9,13 @@ export function activate(context: ExtensionContext) {
 
 	// Use the console to output diagnostic information (console.log) and errors (console.error)
 	// This line of code will only be executed once when your extension is activated
-	console.log('Congratulations, your extension "markdown-toc-generator" is now active!');
+	//console.log('Congratulations, your extension "markdown-toc-generator" is now active!');
 
 	// The command has been defined in the package.json file
 	// Now provide the implementation of the command with registerCommand
 	// The commandId parameter must match the command field in package.json
 
-	let command = commands.registerCommand('extension.generateTOC', () => {
+	let generateTOCCommand = commands.registerCommand('extension.generateTOC', () => {
 		let editor = window.activeTextEditor;
 		if (editor) {
 			let doc = editor.document;
@@ -23,8 +23,29 @@ export function activate(context: ExtensionContext) {
 			markdown.createOrUpdateTOC();
 		}
 	});
+	context.subscriptions.push(generateTOCCommand);
 
-	context.subscriptions.push(command);
+	let removeTOCCommand = commands.registerCommand('extension.removeTOC', () => {
+		let editor = window.activeTextEditor;
+		if (editor) {
+			let doc = editor.document;
+			let markdown = new Markdown(editor, doc);
+			markdown.removeTOC();
+		}
+	});
+
+	context.subscriptions.push(removeTOCCommand);
+
+	let generateHeadingNumbering = commands.registerCommand('extension.generateHeadingNumbering', () => {
+		let editor = window.activeTextEditor;
+		if (editor) {
+			let doc = editor.document;
+			let markdown = new Markdown(editor, doc);
+			markdown.generateHeadingNumbering();
+		}
+	});
+
+	context.subscriptions.push(generateHeadingNumbering);
 }
 
 // this method is called when your extension is deactivated
