@@ -1,6 +1,6 @@
 # markdown-toc-generator README
 
-This is the README for your extension "markdown-toc-generator". After writing up a brief description, we recommend including the following sections.
+A simple extension to generate and update a Table of Contents for Markdown files. Also has features to generate and update heading numbering.
 
 ## Features
 
