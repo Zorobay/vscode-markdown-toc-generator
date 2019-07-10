@@ -4,6 +4,14 @@ A simple extension to generate and update a Table of Contents for Markdown files
 
 ## Features
 
+### Generate/Update Table of Contents
+
+It can be really frustrating to manually create and update a Table of Contents in Markdown files. Luckily, you don't need to anymore! 
+
+You choose yourself where the TOC is to be placed by right-clicking and choosing `Generate/Update TOC here` from the context menu. Having this as a context menu command rather than in the command pallette gives more flexibility to you as a user and even enables you to create more than one TOC.
+
+
+
 Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
 
 For example if there is an image subfolder under your extension project workspace:
