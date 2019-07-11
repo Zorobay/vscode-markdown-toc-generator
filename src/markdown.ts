@@ -1,4 +1,4 @@
-import { window, Position, TextDocument, TextEditorEdit, Range, TextLine, InputBoxOptions, TextEditor, DocumentHighlight, TextEdit } from "vscode";
+import { Position, Range, TextDocument, TextEditor, TextEditorEdit, window } from "vscode";
 
 // Define constants to mark start and end of markdown TOC
 const TOC_START_COMMENT = "[comment]: # (---START_OF_TOC---)";
@@ -22,6 +22,27 @@ export class Markdown {
     constructor(editor: TextEditor, document: TextDocument) {
         this.editor = editor;
         this.document = document;
+    }
+
+    async removeHeadingNumbering() {
+        await this.editor.edit((editBuilder: TextEditorEdit) => {
+            for (let lineIndex: number = 0; lineIndex < this.document.lineCount; lineIndex++) {
+                let line = this.document.lineAt(lineIndex);
+                if (!line.isEmptyOrWhitespace && this.document.lineAt(lineIndex).text.match(REG_HEADING)) {
+                    let heading = new Heading(line.text);
+
+                    if (heading.getChapter()) {
+                        let match = REG_CHAPTER.exec(line.text);
+
+                        if (match && match.length === 4) {
+                            let newHeading = match[1] + " " + match[3];
+
+                            editBuilder.replace(line.range, newHeading);
+                        }
+                    }
+                }
+            }
+        });
     }
 
     async generateHeadingNumbering() {
@@ -48,7 +69,6 @@ export class Markdown {
 
                     let targetChapter = chaptersToString(chapters);
 
-                    console.log(`Heading: ${heading.heading}, Should be: ${targetChapter}`);
                     if (!heading.getChapter() || heading.getChapter() !== targetChapter) {  // Heading is missing numbering or is wrong
                         let match = REG_CHAPTER.exec(line.text);
                         if (match && match.length === 4) {
@@ -125,7 +145,7 @@ export class Markdown {
         }
     }
 
-    async removeTOC(begin: number=-1, end: number=-1) {
+    async removeTOC(begin: number = -1, end: number = -1) {
         if (begin < 0) {
             let positions = this.tocPresent();
             if (positions.toc_start > 0) {

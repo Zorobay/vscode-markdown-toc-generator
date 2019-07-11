@@ -4,7 +4,7 @@
   "displayName": "Markdown TOC Generator",
   "description": "A simple extension to generate Table of Contents for markdown files.",
   "version": "0.0.1",
-  "repository": "https://github.com/Zorobay/vscode-markdown-toc-generator",
+  "repository": "https://github.com/Zorobay/vscode-markdown-toc-generator.git",
   "engines": {
     "vscode": "^1.36.0"
   },
@@ -12,8 +12,8 @@
     "Other"
   ],
   "activationEvents": [
-    "onCommand:extension.generateTOC",
-    "onCommand:extension.generateHeadingNumbering"
+    "onCommand:extension.generateHeadingNumbering",
+    "onCommand:extension.removeHeadingNumbering"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -32,6 +32,11 @@
         "command": "extension.generateHeadingNumbering",
         "title": "Generate/Update heading numbering",
         "category": "Heading"
+      },
+      {
+        "command": "extension.removeHeadingNumbering",
+        "title": "Remove heading numbering",
+        "category": "Heading"
       }
     ],
     "menus": {
@@ -47,6 +52,10 @@
         {
           "when": "resourceLangId == markdown",
           "command": "extension.generateHeadingNumbering"
+        },
+        {
+          "when": "resourceLangId == markdown",
+          "command": "extension.removeHeadingNumbering"
         }
       ],
       "commandPalette": [

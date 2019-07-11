@@ -33,7 +33,6 @@ export function activate(context: ExtensionContext) {
 			markdown.removeTOC();
 		}
 	});
-
 	context.subscriptions.push(removeTOCCommand);
 
 	let generateHeadingNumbering = commands.registerCommand('extension.generateHeadingNumbering', () => {
@@ -44,8 +43,17 @@ export function activate(context: ExtensionContext) {
 			markdown.generateHeadingNumbering();
 		}
 	});
-
 	context.subscriptions.push(generateHeadingNumbering);
+
+	let removeHeadingNumbering = commands.registerCommand('extension.removeHeadingNumbering', () => {
+		let editor = window.activeTextEditor;
+		if (editor) {
+			let doc = editor.document;
+			let markdown = new Markdown(editor, doc);
+			markdown.removeHeadingNumbering();
+		}
+	});
+	context.subscriptions.push(removeHeadingNumbering);
 }
 
 // this method is called when your extension is deactivated
